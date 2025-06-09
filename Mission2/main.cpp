@@ -1,501 +1,133 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include <iostream>
+#include <unordered_map>
+#include <functional>
+#include <memory>
+#include <string>
 
-#define CLEAR_SCREEN "\033[H\033[2J"
-
-int stack[10];
-
-struct CarInformation
-{
-    int CarType;
-    int EngineType;
-    int BrakeSystem;
-    int SteeringSystem;
+struct IEngine {
+    virtual void Type() const = 0;
+    virtual ~IEngine() = default;
 };
-void PrintCarType();
-void selectCarType(int answer);
-
-void PrintCarEngine();
-void selectEngine(int answer);
-
-void PrintCarBrakeSystem();
-void selectbrakeSystem(int answer);
-
-void PrintCarSteeringSystem();
-void selectSteeringSystem(int answer);
-
-void PrintCarRunTest();
-int SelectCarRunTest(const CarInformation car);
-
-void delay(int ms);
-int ReceiveAnswer();
-bool isValidCheckofSEDAN(const CarInformation car);
-bool isValidCheckofSUV(const CarInformation car);
-bool isValidCheckofTRUCK(const CarInformation car);
-bool isValidCheckofMANDO(const CarInformation car);
-bool isValidCheck(const CarInformation car);
-bool isTestCheck(const CarInformation car);
-
-enum QuesionType
-{
-    CarType_Q,
-    Engine_Q,
-    brakeSystem_Q,
-    SteeringSystem_Q,
-    Run_Test
+struct IBrake {
+    virtual void Type() const = 0;
+    virtual ~IBrake() = default;
+};
+struct ISteering {
+    virtual void Type() const = 0;
+    virtual ~ISteering() = default;
 };
 
-enum CarType
-{
-    Init_CarType,
-    SEDAN = 1,
-    SUV,
-    TRUCK,
-    MAX_CARTYPE
+struct GM_Engine : IEngine {
+    void Type() const override { std::cout << " GM ì—”ì§„ì„ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤!\n"; }
 };
-char stCarType[MAX_CARTYPE-1][20]
-{
-    {"SEDAN"},
-    {"SUV"},
-    {"TRUCK"}
+struct ToyoTa_Engine : IEngine {
+    void Type() const override { std::cout << " ToyoTa ì—”ì§„ì„ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤ .\n"; }
+};
+struct WIA_Engine : IEngine {
+    void Type() const override { std::cout << " WIA ì—”ì§„ì„ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤ .\n"; }
 };
 
-enum Engine
-{
-    Init_Engine,
-    GM = 1,
-    TOYOTA,
-    WIA,
-    BROKEN,
-    MAX_Engine
+struct MANDOBrake : IBrake {
+    void Type() const override { std::cout << " Mando ì œë™ìž¥ì¹˜ë¥¼ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤.\n"; }
 };
-char stEngine[MAX_Engine - 1][20]
-{
-    {"GM"},
-    {"TOYOTA"},
-    {"WIA"}
+struct ContinentalBrake : IBrake {
+    void Type() const override { std::cout << " Continental ì œë™ìž¥ì¹˜ë¥¼ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤.\n"; }
 };
-enum brakeSystem
-{
-    Init_BrakeSystem,
-    MANDO = 1,
-    CONTINENTAL,
-    BOSCH_B,
-    MAX_BrakeSystem
+struct BoschBrake : IBrake {
+    void Type() const override { std::cout << " Bosch ì œë™ìž¥ì¹˜ë¥¼ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤.\n"; }
 };
-char stbrakeSystem[MAX_BrakeSystem - 1][20]
-{
-    {"MANDO"},
-    {"CONTINENTAL"},
-    {"BOSCH_B"}
+
+struct BoschSteering : ISteering {
+    void Type() const override { std::cout << " Bosch ì¡°í–¥ìž¥ì¹˜ë¥¼ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤.\n"; }
 };
-enum SteeringSystem
-{
-    Init_SteeringSystem,
-    BOSCH_S = 1,
-    MOBIS,
-    MAX_SteeringSystem
+struct MobisSteering : ISteering {
+    void Type() const override { std::cout << " Mobis ì¡°í–¥ìž¥ì¹˜ë¥¼ ì„ íƒí•˜ì…¨ìŠµë‹ˆë‹¤.\n"; }
 };
-char stSteeringSystem[MAX_SteeringSystem - 1][10]
-{
-    {"BOSCH_S"},
-    {"MOBIS"}
-};
-void delay(int ms)
-{
-    volatile int sum = 0;
-    for (int i = 0; i < 1000; i++)
-    {
-        for (int j = 0; j < 1000; j++)
-        {
-            for (int t = 0; t < ms; t++)
-            {
-                sum++;
-            }
+
+template<typename T>
+class Registry {
+    std::unordered_map<std::string, std::function<std::unique_ptr<T>()>> creators;
+public:
+    void registerType(const std::string& name, std::function<std::unique_ptr<T>()> func) {
+        creators[name] = func;
+    }
+
+    std::unique_ptr<T> create(const std::string& name) const {
+        int answer = stoi(name, nullptr, 10);
+        auto it = creators.begin();
+        for (int idx = 0; idx < answer-1; idx++)
+            it++;
+        if (it != creators.end()) return it->second();
+        throw std::runtime_error(" Unknown type: " + name);
+    }
+
+    void listOptions() const {
+        for (const auto& [k, _] : creators) {
+            std::cout << "- " << k << "\n";
         }
     }
-}
+};
 
-//todo 
-// ÀÔ·Â ºÎºÐ¿¡¼­ 0ÀÌ¶û exit Ã³¸®
-
-void PrintCarType()
-{
-    printf(CLEAR_SCREEN);
-
-    printf("        ______________\n");
-    printf("       /|            | \n");
-    printf("  ____/_|_____________|____\n");
-    printf(" |                      O  |\n");
-    printf(" '-(@)----------------(@)--'\n");
-    printf("===============================\n");
-    printf("¾î¶² Â÷·® Å¸ÀÔÀ» ¼±ÅÃÇÒ±î¿ä?\n");
-    printf("1. Sedan\n");
-    printf("2. SUV\n");
-    printf("3. Truck\n");
-
-}
-
-int SelectCarType(CarInformation* car)
-{
-    int answer;
-    answer = ReceiveAnswer();
-    if (!(answer > Init_CarType && answer <= MAX_CARTYPE))
-    {
-        printf("ERROR :: Â÷·® Å¸ÀÔÀº %d ~ %d ¹üÀ§¸¸ ¼±ÅÃ °¡´É\n", Init_CarType+1, MAX_CARTYPE-1);
-        delay(800);
-        return CarType_Q;
-    }
-   
-   
-    printf("Â÷·® Å¸ÀÔÀ¸·Î %sÀ» ¼±ÅÃÇÏ¼Ì½À´Ï´Ù.\n", stCarType[answer-1]);
-
-    car->CarType = answer;
-
-    return Engine_Q;
-}
-
-void PrintCarEngine()
-{
-    printf(CLEAR_SCREEN);
-    printf("¾î¶² ¿£ÁøÀ» Å¾ÀçÇÒ±î¿ä?\n");
-    printf("0. µÚ·Î°¡±â\n");
-    printf("1. GM\n");
-    printf("2. TOYOTA\n");
-    printf("3. WIA\n");
-    printf("4. °íÀå³­ ¿£Áø\n");
-
-}
-int SelectCarEngine(CarInformation* car)
-{
-    int answer;
-    answer = ReceiveAnswer();
-
-    if(answer == 0)
-        return CarType_Q;
-
-    if (!(answer > Init_Engine && answer <= MAX_Engine))
-    {
-        printf("ERROR :: ¿£ÁøÀº %d ~ %d ¹üÀ§¸¸ ¼±ÅÃ °¡´É\n", Init_Engine+1, MAX_Engine-1);
-        delay(800);
-        return Engine_Q;
+class Car {
+    std::unique_ptr<IEngine> engine_;
+    std::unique_ptr<IBrake> brake_;
+    std::unique_ptr<ISteering> steering_;
+public:
+    Car(std::unique_ptr<IEngine> e, std::unique_ptr<IBrake> b, std::unique_ptr<ISteering> s)
+        : engine_(std::move(e)), brake_(std::move(b)), steering_(std::move(s)) {
+             
     }
 
-    printf("%s ¿£ÁøÀ» ¼±ÅÃÇÏ¼Ì½À´Ï´Ù.\n",stEngine[answer-1]);
-   
-    car->EngineType = answer;
+    void run() const {
+        engine_->Type();
+        steering_->Type();
+        brake_->Type();
+    }
+};
 
-    return brakeSystem_Q;
-}
-void PrintCarBrakeSystem()
-{
-    printf(CLEAR_SCREEN);
-    printf("¾î¶² Á¦µ¿ÀåÄ¡¸¦ ¼±ÅÃÇÒ±î¿ä?\n");
-    printf("0. µÚ·Î°¡±â\n");
-    printf("1. MANDO\n");
-    printf("2. CONTINENTAL\n");
-    printf("3. BOSCH\n");
+class CarAssembler {
+    Registry<IEngine> engineRegistry_;
+    Registry<IBrake> brakeRegistry_;
+    Registry<ISteering> steeringRegistry_;
+public:
+    CarAssembler() {
+        engineRegistry_.registerType("1. GM", [] { return std::make_unique<GM_Engine>(); });
+        engineRegistry_.registerType("2. TOYOTA", [] { return std::make_unique<ToyoTa_Engine>(); });
+        engineRegistry_.registerType("3. WIA", [] { return std::make_unique<WIA_Engine>(); });
 
-}
 
-int SelectCarBrakeSystem(CarInformation* car)
-{
-    int answer;
-    answer = ReceiveAnswer();
+        brakeRegistry_.registerType("1. MANDO", [] { return std::make_unique<MANDOBrake>(); });
+        brakeRegistry_.registerType("2. Continental", [] { return std::make_unique<ContinentalBrake>(); });
+        brakeRegistry_.registerType("3. Bosch", [] { return std::make_unique<BoschBrake>(); });
 
-    if (answer == 0)
-        return Engine_Q;
-
-    if (!(answer > Init_BrakeSystem && answer <= MAX_BrakeSystem))
-    {
-        printf("ERROR :: Á¦µ¿ÀåÄ¡´Â %d ~ %d ¹üÀ§¸¸ ¼±ÅÃ °¡´É\n", Init_BrakeSystem+1, MAX_BrakeSystem-1);
-        delay(800);
-        return brakeSystem_Q;
+        steeringRegistry_.registerType("1. Bosch", [] { return std::make_unique<BoschSteering>(); });
+        steeringRegistry_.registerType("2. Mobis", [] { return std::make_unique<MobisSteering>(); });
     }
 
-    printf("%s  Á¦µ¿ÀåÄ¡¸¦ ¼±ÅÃÇÏ¼Ì½À´Ï´Ù.\n",stbrakeSystem[answer - 1]);
-   
-    car->BrakeSystem = answer;
+    Car assembleFromConsole() {
+        std::string eng, brk, steer;
 
-    return SteeringSystem_Q;
-}
-void PrintCarSteeringSystem()
-{
-    printf(CLEAR_SCREEN);
-    printf("¾î¶² Á¶ÇâÀåÄ¡¸¦ ¼±ÅÃÇÒ±î¿ä?\n");
-    printf("0. µÚ·Î°¡±â\n");
-    printf("1. BOSCH\n");
-    printf("2. MOBIS\n");
-}
-int SelectCarSteeringSystem(CarInformation* car)
-{
-    int answer;
-    answer = ReceiveAnswer();
+        std::cout << "ì–´ë–¤ ì—”ì§„ì„ íƒ‘ìž¬í• ê¹Œìš”?\n"; engineRegistry_.listOptions(); std::cout << "> "; std::cin >> eng;
+        std::cout << "ì–´ë–¤ ì œë™ìž¥ì¹˜ë¥¼ ì„ íƒí• ê¹Œìš”?\n";  brakeRegistry_.listOptions(); std::cout << "> "; std::cin >> brk;
+        std::cout << "ì–´ë–¤ ì¡°í–¥ìž¥ì¹˜ë¥¼ ì„ íƒí• ê¹Œìš”?\n"; steeringRegistry_.listOptions(); std::cout << "> "; std::cin >> steer;
 
-    if (answer == 0)
-        return brakeSystem_Q;
-
-    if (!(answer > Init_SteeringSystem && answer <= MAX_SteeringSystem))
-    {
-        printf("ERROR :: Á¶ÇâÀåÄ¡´Â %d ~ %d ¹üÀ§¸¸ ¼±ÅÃ °¡´É\n", Init_SteeringSystem+1, MAX_SteeringSystem-1);
-        delay(800);
-        return SteeringSystem_Q;
+        return Car(
+            engineRegistry_.create(eng),
+            brakeRegistry_.create(brk),
+            steeringRegistry_.create(steer)
+        );
     }
+};
 
-    printf("%s Á¶ÇâÀåÄ¡ ¼±ÅÃÇÏ¼Ì½À´Ï´Ù.\n",stSteeringSystem[answer-1]);
+int main() {
+    try {
+        CarAssembler assembler;
+        Car car = assembler.assembleFromConsole();
 
-    car->SteeringSystem = answer;
-
-    return Run_Test;
-}
-void PrintCarRunTest()
-{
-    printf(CLEAR_SCREEN);
-    printf("¸ÚÁø Â÷·®ÀÌ ¿Ï¼ºµÇ¾ú½À´Ï´Ù.\n");
-    printf("¾î¶² µ¿ÀÛÀ» ÇÒ±î¿ä?\n");
-    printf("0. Ã³À½ È­¸éÀ¸·Î µ¹¾Æ°¡±â\n");
-    printf("1. RUN\n");
-    printf("2. Test\n");
-}
-int SelectCarRunTest(const CarInformation car)
-{
-    int answer;
-    answer = ReceiveAnswer();
-
-    if (answer == 0)
-        return CarType_Q;
-
-
-    if (!(answer >= 1 && answer <= 2))
-    {
-        printf("ERROR :: Run ¶Ç´Â Test Áß ÇÏ³ª¸¦ ¼±ÅÃ ÇÊ¿ä\n");
-        delay(800);
-        return Run_Test;;
+        car.run();
     }
-
-    if ( answer == 1)
-    {
-        
-        if (true != isValidCheck(car))
-        {
-            printf("ÀÚµ¿Â÷°¡ µ¿ÀÛµÇÁö ¾Ê½À´Ï´Ù\n");
-            return Run_Test;
-        }
-       
-        if(BROKEN == car.EngineType)
-        {
-            printf("¿£ÁøÀÌ °íÀå³ªÀÖ½À´Ï´Ù.\n");
-            printf("ÀÚµ¿Â÷°¡ ¿òÁ÷ÀÌÁö ¾Ê½À´Ï´Ù.\n");
-            return Run_Test;
-        }
-       
-        printf("Car Type : %s\n",stCarType[car.CarType-1]);
-        printf("Engine : %s\n", stEngine[car.EngineType - 1]);
-        printf("Brake System : %s\n",stbrakeSystem[car.BrakeSystem-1]);
-        printf("steering System : %s\n", stSteeringSystem[car.SteeringSystem - 1]);
-        printf("ÀÚµ¿Â÷°¡ µ¿ÀÛµË´Ï´Ù.\n");
-                    
-        delay(2000);
-
+    catch (const std::exception& ex) {
+        std::cerr << ex.what() << "\n";
     }
-    else if (answer == 2)
-    {
-        printf("Test...\n");
-        delay(1500);     
-        if (true == isTestCheck(car))
-        {
-            printf("ÀÚµ¿Â÷ ºÎÇ° Á¶ÇÕ Å×½ºÆ® °á°ú : PASS\n");
-        }       
-        delay(2000);
-
-    }
-
-    return Run_Test;
-}
-int ReceiveAnswer()
-{
-    char buf[100];
-    printf("===============================\n");
-
-    printf("INPUT > ");
-    fgets(buf, sizeof(buf), stdin);
-
-    // ¿£ÅÍ °³Çà¹®ÀÚ Á¦°Å
-    char* context = nullptr;
-    strtok_s(buf, "\r", &context);
-    strtok_s(buf, "\n", &context);
-
-    if (!strcmp(buf, "exit"))
-    {
-        printf("¹ÙÀÌ¹ÙÀÌ\n");
-        exit(0);
-    }
-    //Remove Enter Opening Characters
-    char* checkNumber;
-    int answer = strtol(buf, &checkNumber, 10); // ¹®ÀÚ¿­À» 10Áø¼ö·Î º¯È¯
-
-    // ÀÔ·Â¹ÞÀº ¹®ÀÚ°¡ ¼ýÀÚ°¡ ¾Æ´Ï¶ó¸é
-    if (*checkNumber != '\0')
-    {
-        printf("ERROR :: ¼ýÀÚ¸¸ ÀÔ·Â °¡´É\n");
-        delay(800);
-    }
-    return answer;
-}
-
-
-bool isValidCheckofSEDAN(const CarInformation car)
-{
-    if (car.BrakeSystem == CONTINENTAL)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool isValidCheckofSUV(const CarInformation car)
-{
-    if (car.EngineType == TOYOTA)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool isValidCheckofTRUCK(const CarInformation car)
-{
-    bool bret=true;
-    if (car.EngineType == WIA)
-    {
-        bret = false;
-    }
-        
-    if (car.BrakeSystem == MANDO)
-    {
-        bret = false;
-
-    }
-
-    return bret;
-}
-bool isValidCheckofBOSCH(const CarInformation car)
-{
-    if (car.BrakeSystem == BOSCH_B && car.SteeringSystem != BOSCH_S)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool isValidCheck(const CarInformation car)
-{
-    switch (car.CarType)
-    {
-    case SEDAN:
-        if (true != isValidCheckofSEDAN(car))
-            return false;
-        break;
-    case SUV:
-        if (true != isValidCheckofSUV(car))
-            return false;
-        break;
-    case TRUCK:
-        if (true != isValidCheckofTRUCK(car))
-            return false;
-        break;
-    }
-
-    if (true != isValidCheckofBOSCH(car))
-        return false;
-
-    return true;
-}
-
-
-bool isTestCheck(const CarInformation car)
-{
-    int ret = true;
-    switch (car.CarType)
-    {
-    case SEDAN:
-        if (true != isValidCheckofSEDAN(car))
-        {
-            printf("ÀÚµ¿Â÷ ºÎÇ° Á¶ÇÕ Å×½ºÆ® °á°ú : FAIL\n");
-            printf("Sedan¿¡´Â ContinentalÁ¦µ¿ÀåÄ¡ »ç¿ë ºÒ°¡\n");
-            ret = false;
-        }
-        break;
-    case SUV:
-        if (true != isValidCheckofSUV(car))
-        {
-            printf("ÀÚµ¿Â÷ ºÎÇ° Á¶ÇÕ Å×½ºÆ® °á°ú : FAIL\n");
-            printf("SUV¿¡´Â TOYOTA¿£Áø »ç¿ë ºÒ°¡\n");
-            ret = false;
-
-        }
-        break;
-    case TRUCK:
-        if (true != isValidCheckofTRUCK(car))
-        {
-            if (car.EngineType == WIA)
-            {
-                 printf("ÀÚµ¿Â÷ ºÎÇ° Á¶ÇÕ Å×½ºÆ® °á°ú : FAIL\n");
-                 printf("Truck¿¡´Â WIA¿£Áø »ç¿ë ºÒ°¡\n");
-                 ret = false;
-
-            }
-
-            if (car.BrakeSystem == MANDO)
-            {
-                 printf("ÀÚµ¿Â÷ ºÎÇ° Á¶ÇÕ Å×½ºÆ® °á°ú : FAIL\n");
-                 printf("Truck¿¡´Â MandoÁ¦µ¿ÀåÄ¡ »ç¿ë ºÒ°¡\n");
-                 ret = false;
-
-            }
-        }          
-        break;
-    }
-
-    if (true != isValidCheckofBOSCH(car))
-    {
-        printf("ÀÚµ¿Â÷ ºÎÇ° Á¶ÇÕ Å×½ºÆ® °á°ú : FAIL\n");
-        printf("Bosch¿£Áø¿¡´Â BOSCHÁ¶ÇâÀåÄ¡ ÀÌ¿Ü »ç¿ë ºÒ°¡\n");
-        ret = false;
-
-    }
-
-    return ret;
-}
-int main()
-{
-    CarInformation mycar;
-    int step = CarType_Q;
-    int answer;
-    while (1)
-    {
-        switch (step)
-        {
-        case CarType_Q:
-            PrintCarType();
-            step = SelectCarType(&mycar);
-            break;
-        case Engine_Q:
-            PrintCarEngine();
-            step = SelectCarEngine(&mycar);
-            break;
-        case brakeSystem_Q:
-            PrintCarBrakeSystem();
-            step = SelectCarBrakeSystem(&mycar);
-            break;
-        case SteeringSystem_Q:
-            PrintCarSteeringSystem();
-            step = SelectCarSteeringSystem(&mycar);
-            break;
-        case Run_Test:
-            PrintCarRunTest();
-            step = SelectCarRunTest(mycar);
-            break;
-        }
-    }
+    return 0;
 }
