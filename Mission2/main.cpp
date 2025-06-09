@@ -4,6 +4,10 @@
 #include <memory>
 #include <string>
 
+struct ICarType {
+    virtual void Type() const = 0;
+    virtual ~ICarType() = default;
+};
 struct IEngine {
     virtual void Type() const = 0;
     virtual ~IEngine() = default;
@@ -15,6 +19,16 @@ struct IBrake {
 struct ISteering {
     virtual void Type() const = 0;
     virtual ~ISteering() = default;
+};
+
+struct SEDAN_Type : ICarType {
+    void Type() const override { std::cout << " 차량 타입으로 세단을 선택하셨습니다!\n"; }
+};
+struct SUV_Type : ICarType {
+    void Type() const override { std::cout << " 차량 타입으로 SUV을 선택하셨습니다\n"; }
+};
+struct TRUCK_Type : ICarType {
+    void Type() const override { std::cout << " 차량 타입으로 TRUCK을 선택하셨습니다\n"; }
 };
 
 struct GM_Engine : IEngine {
@@ -69,28 +83,38 @@ public:
 };
 
 class Car {
+    std::unique_ptr<ICarType> cartype_;
     std::unique_ptr<IEngine> engine_;
     std::unique_ptr<IBrake> brake_;
     std::unique_ptr<ISteering> steering_;
 public:
-    Car(std::unique_ptr<IEngine> e, std::unique_ptr<IBrake> b, std::unique_ptr<ISteering> s)
-        : engine_(std::move(e)), brake_(std::move(b)), steering_(std::move(s)) {
+    Car(std::unique_ptr<ICarType> cartype,std::unique_ptr<IEngine> engine, std::unique_ptr<IBrake> brake, std::unique_ptr<ISteering> steering)
+        : cartype_(std::move(cartype)), engine_(std::move(engine)), brake_(std::move(brake)), steering_(std::move(steering)) {
              
     }
 
     void run() const {
+        cartype_->Type();
         engine_->Type();
         steering_->Type();
         brake_->Type();
     }
+    bool validate() const {
+        
+    }
 };
 
 class CarAssembler {
+    Registry<ICarType> CarRegistry_;
     Registry<IEngine> engineRegistry_;
     Registry<IBrake> brakeRegistry_;
     Registry<ISteering> steeringRegistry_;
 public:
     CarAssembler() {
+        CarRegistry_.registerType("1. SEDAN", [] { return std::make_unique<SEDAN_Type>(); });
+        CarRegistry_.registerType("2. SUV", [] { return std::make_unique<SUV_Type>(); });
+        CarRegistry_.registerType("3. TRUCK", [] { return std::make_unique<TRUCK_Type>(); });
+
         engineRegistry_.registerType("1. GM", [] { return std::make_unique<GM_Engine>(); });
         engineRegistry_.registerType("2. TOYOTA", [] { return std::make_unique<ToyoTa_Engine>(); });
         engineRegistry_.registerType("3. WIA", [] { return std::make_unique<WIA_Engine>(); });
@@ -105,16 +129,17 @@ public:
     }
 
     Car assembleFromConsole() {
-        std::string eng, brk, steer;
-
-        std::cout << "어떤 엔진을 탑재할까요?\n"; engineRegistry_.listOptions(); std::cout << "> "; std::cin >> eng;
-        std::cout << "어떤 제동장치를 선택할까요?\n";  brakeRegistry_.listOptions(); std::cout << "> "; std::cin >> brk;
-        std::cout << "어떤 조향장치를 선택할까요?\n"; steeringRegistry_.listOptions(); std::cout << "> "; std::cin >> steer;
+        std::string cartype, engine, brake, steering;
+        std::cout << "어떤 차량을 선택할까요?\n"; CarRegistry_.listOptions(); std::cout << "> "; std::cin >> cartype;
+        std::cout << "어떤 엔진을 탑재할까요?\n"; engineRegistry_.listOptions(); std::cout << "> "; std::cin >> engine;
+        std::cout << "어떤 제동장치를 선택할까요?\n";  brakeRegistry_.listOptions(); std::cout << "> "; std::cin >> brake;
+        std::cout << "어떤 조향장치를 선택할까요?\n"; steeringRegistry_.listOptions(); std::cout << "> "; std::cin >> steering;
 
         return Car(
-            engineRegistry_.create(eng),
-            brakeRegistry_.create(brk),
-            steeringRegistry_.create(steer)
+            CarRegistry_.create(cartype),
+            engineRegistry_.create(engine),
+            brakeRegistry_.create(brake),
+            steeringRegistry_.create(steering)
         );
     }
 };
